@@ -1,6 +1,14 @@
+import pytest
 from fastapi.testclient import TestClient
 
-from ecommerce.app import app
+from ecommerce.app import app, configure_database
+
+
+@pytest.fixture(autouse=True)
+def reset_database(tmp_path):
+    configure_database(str(tmp_path / "products.db"))
+    yield
+
 
 client = TestClient(app)
 
@@ -25,6 +33,16 @@ def test_create_product():
 
 
 def test_list_products():
+    client.post(
+        "/products",
+        json={
+            "name": "Mouse sem fio",
+            "description": "Mouse ergonômico",
+            "price": 129.99,
+            "stock": 50,
+        },
+    )
+
     response = client.get("/products")
 
     assert response.status_code == 200
@@ -96,3 +114,27 @@ def test_delete_product():
 
     follow_up = client.get(f"/products/{created['id']}")
     assert follow_up.status_code == 404
+
+
+def test_get_missing_product_returns_404():
+    response = client.get("/products/non-existent-id")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Product not found"
+
+
+def test_database_persists_across_requests():
+    first = client.post(
+        "/products",
+        json={
+            "name": "Câmera digital",
+            "description": "Câmera para fotos e vídeos",
+            "price": 2199.00,
+            "stock": 4,
+        },
+    ).json()
+
+    second = client.get(f"/products/{first['id']}")
+
+    assert second.status_code == 200
+    assert second.json()["name"] == "Câmera digital"

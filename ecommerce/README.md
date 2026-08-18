@@ -2,62 +2,69 @@
 
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115.0-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![SQLite](https://img.shields.io/badge/SQLite-Database-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
 [![Pytest](https://img.shields.io/badge/Pytest-8.3.3-0A9EDC?logo=pytest&logoColor=white)](https://pytest.org/)
 [![OpenSpec](https://img.shields.io/badge/OpenSpec-Spec%20Driven-6C63FF)](https://github.com/Fission-AI/OpenSpec)
 
-API RESTful para gestão do catálogo de produtos de um e-commerce, criada como estudo prático de Spec-Driven Development com OpenSpec, FastAPI e testes automatizados.
+API RESTful para gestão do catálogo de produtos de um e-commerce, com persistência em banco de dados, validação de payloads, autenticação por chave de API e documentação pronta para apresentação.
 
 ## Visão geral
 
-Este projeto demonstra um fluxo de trabalho moderno para construir software com clareza e rastreabilidade:
+Este projeto demonstra uma evolução realista de backend em Python, destacando:
 
-- proposta de mudança com OpenSpec
-- especificação de requisitos em arquivos de projeto
-- desenho técnico e arquitetura
-- implementação em FastAPI
+- arquitetura em FastAPI
+- persistência em SQLite
+- regras de negócio para catálogo
+- autenticação simples para operações sensíveis
+- documentação organizada por contexto
 - testes automatizados para validar o comportamento
-- documentação progressiva para manter o contexto enxuto
 
 ## Objetivo do projeto
 
-O objetivo principal é mostrar como uma solução de catálogo de produtos pode evoluir de forma organizada, com regras de negócio claras, documentação separada por contexto e uma estrutura pronta para ser expandida.
+O objetivo principal é mostrar como um catálogo de produtos pode evoluir de uma solução didática para uma estrutura mais profissional, mantendo clareza de desenvolvimento e boa organização para GitHub e apresentação acadêmica.
 
 ## Arquitetura
 
 ```mermaid
 flowchart LR
-    Client[Cliente / Frontend / Admin] --> API[FastAPI]
-    API --> CRUD[Endpoints do catálogo]
-    CRUD --> Model[Modelo de Produto]
-    Model --> Store[Armazenamento em memória]
+    Client[Cliente / Admin / Frontend] --> API[FastAPI]
+    API --> Store[ProductStore]
+    Store --> DB[(SQLite)]
+    API --> Auth[Validar X-API-Key]
     API --> Tests[Testes pytest]
 ```
 
 ## Funcionalidades implementadas
 
-- Cadastro de produtos
-- Listagem de todos os produtos
-- Consulta por identificador
-- Atualização de produto
-- Remoção de produto
-- Validação de payloads e erros HTTP consistentes
+- cadastro de produtos
+- listagem de produtos
+- consulta por identificador
+- atualização de produto
+- remoção de produto
+- persistência em SQLite
+- categoria do produto
+- autenticação para operações de escrita e leitura sensíveis
+- endpoints de health check e documentação Swagger
 
 ## Stack tecnológica
 
 - Python 3.11+
 - FastAPI
 - Pydantic
+- SQLite
 - pytest
 - OpenSpec
 
 ## Estrutura do projeto
 
 ```text
- e-commerce/
+ecommerce/
 ├── app.py
 ├── __init__.py
 ├── agents.md
 ├── README.md
+├── CONTRIBUTING.md
+├── LICENSE
 ├── requirements.txt
 ├── .gitignore
 ├── docs/
@@ -72,7 +79,7 @@ flowchart LR
 │       └── 2026-08-18-product-catalog-api/
 ├── tests/
 │   └── test_ecommerce_api.py
-└── LICENSE
+└── e-commerce.db
 ```
 
 ## Como executar
@@ -106,19 +113,35 @@ http://127.0.0.1:8000/docs
 
 | Método | Endpoint | Descrição |
 |---|---|---|
+| GET | /health | Verifica o status da API |
 | POST | /products | Cria um novo produto |
 | GET | /products | Lista todos os produtos |
 | GET | /products/{product_id} | Consulta um produto por ID |
 | PUT | /products/{product_id} | Atualiza um produto |
 | DELETE | /products/{product_id} | Remove um produto |
 
+## Autenticação
+
+As operações de acesso ao catálogo exigem o cabeçalho:
+
+```http
+X-API-Key: super-secret-key
+```
+
+A chave pode ser configurada com a variável de ambiente:
+
+```powershell
+$env:ECOMMERCE_API_KEY="sua-chave"
+```
+
 ## Regras de negócio
 
-- nome, descrição, preço e estoque são obrigatórios
+- nome, descrição, categoria, preço e estoque são obrigatórios
 - preço deve ser maior que zero
 - estoque deve ser maior ou igual a zero
 - produto inexistente deve retornar 404
 - payload inválido deve retornar 422
+- chave de API inválida ou ausente deve retornar 401
 
 ## Exemplos de payload
 
@@ -128,6 +151,7 @@ http://127.0.0.1:8000/docs
 {
   "name": "Notebook Gamer",
   "description": "Notebook para jogos e produtividade",
+  "category": "Eletrônicos",
   "price": 4999.9,
   "stock": 12
 }
@@ -139,6 +163,7 @@ http://127.0.0.1:8000/docs
 {
   "name": "Notebook Gamer Pro",
   "description": "Notebook com melhor desempenho",
+  "category": "Eletrônicos",
   "price": 5499.9,
   "stock": 8
 }
@@ -149,13 +174,13 @@ http://127.0.0.1:8000/docs
 Execute a suíte automatizada:
 
 ```powershell
-python -m pytest -q
+python -m pytest -q ecommerce/tests/test_ecommerce_api.py
 ```
 
-Resultado esperado:
+Resultado verificado:
 
 ```text
-5 passed
+8 passed in 0.92s
 ```
 
 ## Workflow OpenSpec
@@ -181,15 +206,16 @@ O projeto foi estruturado com o fluxo de Spec-Driven Development:
 
 ## Status do projeto
 
-Status atual: funcional, validado por testes automatizados e pronto para demonstração acadêmica.
+Status atual: funcional, validado por testes automatizados, pronto para demonstração acadêmica e apresentação em GitHub.
 
 ## Roadmap
 
-- [ ] adicionar persistência com banco de dados
-- [ ] implementar autenticação e autorização
-- [ ] incluir categorias e filtros de catálogo
-- [ ] adicionar painel administrativo
-- [ ] evoluir para arquitetura multi-service
+- [x] persistência com banco de dados
+- [x] autenticação por API key
+- [x] categorias de produtos
+- [ ] painel administrativo
+- [ ] integração com frontend
+- [ ] publicação em container e deploy
 
 ## Contribuição
 
@@ -201,10 +227,6 @@ Contribuições são bem-vindas. Para colaborar:
 4. abra um pull request com descrição clara
 
 Consulte [CONTRIBUTING.md](CONTRIBUTING.md) para mais detalhes.
-
-## Observações
-
-Este é um projeto didático e simplificado, pensado para demonstrar boas práticas de documentação, especificação, validação e evolução de software com IA.
 
 ## Licença
 

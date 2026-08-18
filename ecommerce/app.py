@@ -5,10 +5,11 @@ import sqlite3
 from typing import List
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, Header, HTTPException, status
 from pydantic import BaseModel, Field
 
 DATABASE_PATH = os.getenv("ECOMMERCE_DB", "ecommerce.db")
+API_KEY = os.getenv("ECOMMERCE_API_KEY", "super-secret-key")
 
 app = FastAPI(
     title="E-commerce Catalog API",
@@ -20,6 +21,7 @@ app = FastAPI(
 class ProductBase(BaseModel):
     name: str = Field(..., min_length=1, description="Nome do produto")
     description: str = Field(..., min_length=1, description="Descrição do produto")
+    category: str = Field(..., min_length=1, description="Categoria do produto")
     price: float = Field(..., gt=0, description="Preço do produto")
     stock: int = Field(..., ge=0, description="Quantidade em estoque")
 
@@ -47,6 +49,7 @@ def configure_database(path: str = DATABASE_PATH) -> None:
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             description TEXT NOT NULL,
+            category TEXT NOT NULL,
             price REAL NOT NULL,
             stock INTEGER NOT NULL
         )
@@ -62,6 +65,12 @@ def get_connection() -> sqlite3.Connection:
     return connection
 
 
+def validate_api_key(x_api_key: str | None = Header(default=None, alias="X-API-Key")) -> str:
+    if x_api_key is None or x_api_key != API_KEY:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+    return x_api_key
+
+
 class ProductStore:
     """Persistência do catálogo em SQLite."""
 
@@ -69,8 +78,8 @@ class ProductStore:
         product_id = str(uuid4())
         with get_connection() as connection:
             connection.execute(
-                "INSERT INTO products (id, name, description, price, stock) VALUES (?, ?, ?, ?, ?)",
-                (product_id, payload.name, payload.description, payload.price, payload.stock),
+                "INSERT INTO products (id, name, description, category, price, stock) VALUES (?, ?, ?, ?, ?, ?)",
+                (product_id, payload.name, payload.description, payload.category, payload.price, payload.stock),
             )
             connection.commit()
 
@@ -79,7 +88,7 @@ class ProductStore:
     def list(self) -> List[Product]:
         with get_connection() as connection:
             rows = connection.execute(
-                "SELECT id, name, description, price, stock FROM products ORDER BY name"
+                "SELECT id, name, description, category, price, stock FROM products ORDER BY name"
             ).fetchall()
 
         return [Product.model_validate(dict(row)) for row in rows]
@@ -87,7 +96,7 @@ class ProductStore:
     def get(self, product_id: str) -> Product:
         with get_connection() as connection:
             row = connection.execute(
-                "SELECT id, name, description, price, stock FROM products WHERE id = ?",
+                "SELECT id, name, description, category, price, stock FROM products WHERE id = ?",
                 (product_id,),
             ).fetchone()
 
@@ -104,8 +113,8 @@ class ProductStore:
 
         with get_connection() as connection:
             connection.execute(
-                "UPDATE products SET name = ?, description = ?, price = ?, stock = ? WHERE id = ?",
-                (payload.name, payload.description, payload.price, payload.stock, product_id),
+                "UPDATE products SET name = ?, description = ?, category = ?, price = ?, stock = ? WHERE id = ?",
+                (payload.name, payload.description, payload.category, payload.price, payload.stock, product_id),
             )
             connection.commit()
 
@@ -130,31 +139,31 @@ def health_check() -> dict:
 
 
 @app.post("/products", response_model=Product, status_code=status.HTTP_201_CREATED)
-def create_product(payload: ProductCreate) -> Product:
+def create_product(payload: ProductCreate, _: str = Depends(validate_api_key)) -> Product:
     """Cria um novo produto no catálogo."""
     return store.create(payload)
 
 
 @app.get("/products", response_model=List[Product])
-def list_products() -> List[Product]:
+def list_products(_: str = Depends(validate_api_key)) -> List[Product]:
     """Lista todos os produtos cadastrados."""
     return store.list()
 
 
 @app.get("/products/{product_id}", response_model=Product)
-def get_product(product_id: str) -> Product:
+def get_product(product_id: str, _: str = Depends(validate_api_key)) -> Product:
     """Consulta um produto específico pelo identificador."""
     return store.get(product_id)
 
 
 @app.put("/products/{product_id}", response_model=Product)
-def update_product(product_id: str, payload: ProductUpdate) -> Product:
+def update_product(product_id: str, payload: ProductUpdate, _: str = Depends(validate_api_key)) -> Product:
     """Atualiza os dados de um produto existente."""
     return store.update(product_id, payload)
 
 
 @app.delete("/products/{product_id}")
-def delete_product(product_id: str) -> dict:
+def delete_product(product_id: str, _: str = Depends(validate_api_key)) -> dict:
     """Remove um produto do catálogo."""
     store.delete(product_id)
     return {"message": "Product deleted successfully"}

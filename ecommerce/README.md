@@ -176,7 +176,31 @@ O projeto foi estruturado com o fluxo de Spec-Driven Development:
 - [docs/crud-api.md](docs/crud-api.md)
 - [docs/testing.md](docs/testing.md)
 - [docs/api-examples.md](docs/api-examples.md)
+- [docs/roadmap.md](docs/roadmap.md)
 - [agents.md](agents.md)
+
+## Status do projeto
+
+Status atual: funcional, validado por testes automatizados e pronto para demonstração acadêmica.
+
+## Roadmap
+
+- [ ] adicionar persistência com banco de dados
+- [ ] implementar autenticação e autorização
+- [ ] incluir categorias e filtros de catálogo
+- [ ] adicionar painel administrativo
+- [ ] evoluir para arquitetura multi-service
+
+## Contribuição
+
+Contribuições são bem-vindas. Para colaborar:
+
+1. faça um fork do projeto
+2. crie uma branch para sua feature
+3. implemente e teste a mudança
+4. abra um pull request com descrição clara
+
+Consulte [CONTRIBUTING.md](CONTRIBUTING.md) para mais detalhes.
 
 ## Observações
 
